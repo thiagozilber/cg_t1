@@ -13,22 +13,24 @@ class World:
             self.y = 0
             self.color = (1.0, 1.0, 1.0)
             self.alpha = 1.0
-            self.radius = 0.1
+            self.radius = 0.2
             
-        def update_entity(self):
-            x, y = self.get_next_frame()
-            self.x = x
-            self.y = y
-            
+        def update_entity(self, w, h):
+            pix_x, pix_y = self.get_next_frame()
+            self.x, self.y = self.normalize_coords(pix_x, pix_y, w, h)
+
+        def normalize_coords(self, x, y, w, h):
+            return (2*x/w - 1, 2*y/h - 1)
+
         def draw_self(self):
             gl.glPushMatrix()
-            gl.glTranslatef(0, 0, 0)
-            gl.glColor3f(*self.color)
+            gl.glTranslatef(self.x, self.y, 0)
+            gl.glColor4f(*self.color, self.alpha)
             gl.glBegin(gl.GL_TRIANGLE_FAN)
             gl.glVertex2f(self.x, self.y)  # Center of the circle
             for i in range(361):  # 360 degrees + 1 to close the circle
                 angle = i * 3.14159 / 180  # Convert degrees to radians
-                gl.glVertex2f(self.radius * cos(angle), self.radius * sin(angle))
+                gl.glVertex2f(self.x + self.radius * cos(angle), self.y + self.radius * sin(angle))
             gl.glEnd()
             gl.glPopMatrix()
             
@@ -46,6 +48,7 @@ class World:
         self.max_dist = sqrt(self.w**2 + self.h**2)
         self.bg_color = (1.0, 1.0, 1.0)
         self.read_dataset(filename)
+        self.player = self.Entity(-1) #-1 id for player, outside entity list bc its treated differently
 
     def read_dataset(self, filename):
     #This function will create n entities = to the number of newlines in the text file and then populate each entity's self.frame_info with the (x, y, frame_num) data
@@ -79,18 +82,23 @@ class World:
                 if closest is None or dist < closest:
                     closest = dist
         return closest
-    
+
     def normalize(self, dist):
-        return 1 - (dist / self.max_dist) # 1 - (dist / max_dist) = 0 quando dist == max_dist, e vice versa
-        # 1 - (etc) pq a proporção que eu quero é inversa
+        return 1 - 2*dist # used to be 1 - (dist / self.max_dist) but that ends up returning numbers very close to 1
 
     def handle_proximity(self, entity, dist):
         norm = self.normalize(dist)
-        entity.color = (norm, norm, norm)
+        if entity.id % 2 == 0:
+            entity.color = (1-norm, norm, norm)
+        elif entity.id % 3 == 0:
+            entity.color = (norm, 1-norm, norm)
+        else:
+            entity.color = (norm, norm, 1-norm)
+        entity.alpha = norm
 
     def update(self):
         for entity in self.entities:
-            entity.update_entity()
+            entity.update_entity(self.w, self.h)
             self.handle_proximity(entity, self.calculate_proximity(entity)) # calcula a proximidade e atualiza a cor
         self.frame += 1
         if self.frame >= self.frame_limit:
