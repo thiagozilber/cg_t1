@@ -48,6 +48,7 @@ class World:
         self.max_dist = sqrt(self.w**2 + self.h**2)
         self.bg_color = (1.0, 1.0, 1.0)
         self.read_dataset(filename)
+        self.keys = {}  # Dictionary to track key states
         self.player = self.Entity(-1) #-1 id for player, outside entity list bc its treated differently
 
     def read_dataset(self, filename):
@@ -82,6 +83,18 @@ class World:
                 if closest is None or dist < closest:
                     closest = dist
         return closest
+    
+    def player_move(self):
+        step = 0.02
+        # wasd controls
+        if self.keys.get(b'w', False):  
+            self.player.y += step
+        if self.keys.get(b's', False):  
+            self.player.y -= step
+        if self.keys.get(b'a', False):  
+            self.player.x -= step
+        if self.keys.get(b'd', False):  
+            self.player.x += step
 
     def normalize(self, dist):
         return 1 - 2*dist # used to be 1 - (dist / self.max_dist) but that ends up returning numbers very close to 1
@@ -100,6 +113,8 @@ class World:
         for entity in self.entities:
             entity.update_entity(self.w, self.h)
             self.handle_proximity(entity, self.calculate_proximity(entity)) # calcula a proximidade e atualiza a cor
+        self.player_move()
+        self.handle_proximity(self.player, self.calculate_proximity(self.player))
         self.frame += 1
         if self.frame >= self.frame_limit:
             for entity in self.entities:
@@ -108,6 +123,20 @@ class World:
             self.frame = 0
 
 def main():
+    def idle():
+        world.update()
+        glut.glutPostRedisplay()
+    def display():
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        gl.glLoadIdentity()
+        for entity in world.entities:
+            entity.draw_self()
+        world.player.draw_self()
+        glut.glutSwapBuffers()
+    def key_down(key, x, y):
+        world.keys[key] = True
+    def key_up(key, x, y):
+        world.keys[key] = False
     world = World("Paths_D.txt", 800, 600)
     glut.glutInit()
     glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGB | glut.GLUT_DEPTH)
@@ -115,17 +144,10 @@ def main():
     glut.glutCreateWindow(b"Entity Visualization")
     gl.glEnable(gl.GL_DEPTH_TEST)
     gl.glClearColor(*world.bg_color, 1.0)
-    def display():
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-        gl.glLoadIdentity()
-        for entity in world.entities:
-            entity.draw_self()
-        glut.glutSwapBuffers()
-    def idle():
-        world.update()
-        glut.glutPostRedisplay()
     glut.glutDisplayFunc(display)
     glut.glutIdleFunc(idle)
+    glut.glutKeyboardFunc(key_down)
+    glut.glutKeyboardUpFunc(key_up)
     glut.glutMainLoop()
 if __name__ == "__main__":
     main()
