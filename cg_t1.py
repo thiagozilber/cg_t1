@@ -6,6 +6,7 @@ class World:
     class Entity:
         def __init__(self, id):
             self.id = id
+            self.scale = None
             self.frame_info = []
             self.trail = []
             self.index = 0
@@ -39,7 +40,7 @@ class World:
                 self.x, self.y, trash = self.frame_info[self.index]
                 self.index += 1
                 return self.x, self.y
-            return -1, -1
+            return -1, -1   # fora da tela
     
     def __init__(self, filename, w, h):
         self.entities = []
@@ -54,7 +55,9 @@ class World:
     def read_dataset(self, filename):
     #This function will create n entities = to the number of newlines in the text file and then populate each entity's self.frame_info with the (x, y, frame_num) data
         with open(filename, 'r') as file:
-            trash = file.readline() # skip header
+            aux = file.readline() # scale
+            aux = aux[1:-2] # skip first and last char
+            self.scale = int(aux)
             id_counter = 0
             for line in file:
                 entity = self.Entity(id_counter)
@@ -82,6 +85,10 @@ class World:
                 dist = ((entity.x - other.x) ** 2 + (entity.y - other.y) ** 2) ** 0.5
                 if closest is None or dist < closest:
                     closest = dist
+        if self.player.id != entity.id:
+            dist = ((entity.x - self.player.x) ** 2 + (entity.y - self.player.y) ** 2) ** 0.5
+            if closest is None or dist < closest:
+                closest = dist
         return closest
     
     def player_move(self):
@@ -137,7 +144,7 @@ def main():
         world.keys[key] = True
     def key_up(key, x, y):
         world.keys[key] = False
-    world = World("Paths_D.txt", 800, 600)
+    world = World("Paths_D.txt", 800, 800)
     glut.glutInit()
     glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGB | glut.GLUT_DEPTH)
     glut.glutInitWindowSize(world.w, world.h)
